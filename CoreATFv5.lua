@@ -14,33 +14,31 @@
 -- correct.																							--
 --																									--
 -- Input:	- chestSlotArray, which contains:														--
---				> chestSlotArray[1]: Slot number													--
---				> chestSlotArray[2]: Chest Name/Identifier											--
---				> chestSlotArray[3]: Ender Chest Colour Code										--
---				> chestSlotArray[4]: Boolean to determine if code has checked for chest presence	--
+--				> chestSlotArray[n][1]: Slot number													--
+--				> chestSlotArray[n][2]: Chest Name/Identifier										--
+--				> chestSlotArray[n][3]: Boolean to determine if code has checked for chest presence	--
 --																									--
 -- Output:	N/A																						--
 ------------------------------------------------------------------------------------------------------
 function enderCheck(chestSlotArray)
 	local isFinished = false
 	local iter = 1
-	while (!isFinished) do
+	while (not isFinished) do
 		print("Master, please provide me with the appropriate Ender Chests for the following slots:")
 		for iter = 1, 16 do
-			if((chestSlotArray[iter][1] != 0) and (!chestSlotArray[iter][4])) then
+			if((chestSlotArray[iter][1] ~= 0) and (not chestSlotArray[iter][3])) then
 				print("Slot " .. chestSlotArray[iter][1] .. ": " .. chestSlotArray[iter][2])
-				print("Colour code: " .. chestSlotArray[iter][3])
 			end
 		end
 		print("Hit any key when done.")
 		os.pullEvent("key")
 		for iter = 1, 16 do
-			if((chestSlotArray[iter][1] != 0) and (!chestSlotArray[iter][4])) then
+			if((chestSlotArray[iter][1] ~= 0) and (not chestSlotArray[iter][3])) then
 				if((turtle.getItemCount(chestSlotArray[iter][1])<1) and (isFinished)) then
 					isFinished = false
 				else
 					if(turtle.getItemCount(chestSlotArray[iter][1]) > 0) then
-						chestSlotArray[iter][4] = true
+						chestSlotArray[iter][3] = true
 						isFinished = true
 					end
 				end
@@ -63,9 +61,9 @@ function moveForward(originFB, originRL, direction)
 		elseif(direction == 3) then
 			originRL = originRL - 1
 		end
-		return true, originFB, originRL, direction
+		return true, originFB, originRL
 	end
-	return false, originFB, originRL, direction
+	return false, originFB, originRL
 end
 
 ------------------------------------------------------------------------------------------------------
@@ -412,12 +410,24 @@ function attackLoop()
 end
 
 ------------------------------------------------------------------------------------------------------
--- xpAttack()																						--
+-- forwardAttack()																						--
 ------------------------------------------------------------------------------------------------------
-function xpAttack()
+function forwardAttack()
 	turtle.select(1)
 	turtle.attack()
 	turtle.suck()
+end
+
+function upAttack()
+	turtle.select(1)
+	turtle.attackUp()
+	turtle.suckUp()
+end
+
+function downAttack()
+	turtle.select(1)
+	turtle.attackDown()
+	turtle.suckDown()
 end
 
 ------------------------------------------------------------------------------------------------------
@@ -447,7 +457,7 @@ function xpBookAttackGrinder(side)
 			end
 		end
 		
-		xpAttack()
+		forwardAttack()
 		
 		if (noBook==false) then
 			if (turtle.getLevels()>=30) then
@@ -539,4 +549,146 @@ function xpBookGrinder(side)
 			end
 		end
 	end
+end
+
+-- Initial area clearing code (self sufficient)
+-- A simple clear code which "clears out" a given area
+-- Can dig up or down
+-- Will always place torches on lowest level of clearing to ensure no mob spawn
+-- UNDER CONSTRUCTION
+
+function areaClear()
+	local originFB = 0
+	local originRL = 0
+	local originUD = 0
+	local direction = 0
+	local upsideDown = false
+	local mined = true
+	local moveSucess = true
+	local doMineUp, doMineForward, doMineDown = true, true, true
+	
+	print("Initialising Area Clear Code...")
+	
+	local enderChestArray = []
+	local iter = 1
+	for iter = 1, 4
+	do
+		enderChestArray[iter] = []
+	end
+	
+	-- Array of required ender chests
+	enderChestArray[1][1] = 13
+	enderChestArray[1][2] = "Dump Chest"
+	enderChestArray[1][3] = false
+	enderChestArray[2][1] = 14
+	enderChestArray[2][2] = "Refuel Chest"
+	enderChestArray[2][3] = false
+	enderChestArray[3][1] = 15
+	enderChestArray[3][2] = "Torch Resupply Chest"
+	enderChestArray[3][3] = false
+	enderChestArray[4][1] = 16
+	enderChestArray[4][2] = "Resupply Chest"
+	enderChestArray[4][3] = false
+	enderCheck(chestSlotArray)
+	
+	-- Working inventory for turtle
+	local totalSlots = 11
+	local blankSlot = 12
+	
+	print("Master, how wide do you want me to make the area?")
+	local width = tonumber(read())
+	print("Master, how far forward do you want me to go?")
+	local length = tonumber(read())
+	print("Master, how high do you want me to dig the area?")
+	local height = tonumber(read())
+	if(height > 0) then
+		upsideDown = false
+	elseif(height < 0) then
+		upsideDown = true
+	else
+		-- invalid
+	end
+	print("I will begin clearing out the area then, master. I will return here once finished.")
+	
+	if((not upsideDown) and (height > 1)) then
+		while (turtle.detectUp()) do
+			mined = mineUp(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+		end
+		moveSuccess, originUD = moveUp(originUD)
+		while(not moveSuccess) do
+			upAttack()
+			moveSuccess, originUD = moveUp(originUD)
+		end
+	end
+	
+	local needRefuel = false
+	local hasRefueled = false
+	
+	while ((originFB < length) and (mined)) do
+		needRefuel, hasRefueled = refuel(enderChestArray[2][1], blankSlot, upsideDown, enderChestArray[1][1])
+		while ((needRefuel == true) and (hasRefueled == false)) do
+			sleep(60)
+			needRefuel, hasRefueled = refuel(enderChestArray[2][1], blankSlot, upsideDown, enderChestArray[1][1])
+		end
+		if(originFB % 2 == 0) then
+			while(direction ~= 1) do
+				direction = turnRight(direction)
+			end
+			if(originRL == (width - 1)) then
+				while(direction ~= 0) do -- should go up/down, not forward
+					direction = turnLeft(direction)
+				end
+			end
+		else
+			while(direction ~= 3) do
+				direction = turnLeft(direction)
+			end
+			if(originRL == 0) then
+				while(direction ~= 0) do -- should go up/down, not forward
+					direction = turnRight(direction)
+				end
+			end
+		end
+		mined, originFB, originRL = mineOutForward(enderChestArray[1][1], totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
+	end
+end
+
+function mineOutForward(dumpChest, totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
+	local moveSuccess = false
+	local mined = true
+	while(turtle.detectUp() and mined and doMineUp) then
+		mined = mineUp(dumpChest, totalSlots, upsideDown, blankSlot)
+		if(not mined) then
+			-- attempted to mine bedrock
+			doMineUp = false
+		end
+		sleep(2)
+	end
+	while(turtle.detect() and mined and doMineForward) then
+		mined = mineForward(dumpChest, totalSlots, upsideDown, blankSlot)
+		if(not mined) then
+			-- attempted to mine bedrock
+			doMineForward = false
+		end
+		sleep(2)
+	end
+	while(turtle.detectDown() and mined and doMineDown) then
+		mined = mineDown(dumpChest, totalSlots, upsideDown, blankSlot)
+		if(not mined) then
+			-- attempted to mine bedrock
+			doMineDown = false
+		end
+		sleep(2)
+	end
+	if(mined) then
+		moveSuccess, originFB, originRL = moveForward(originFB, originRL, direction)
+		while(not moveSuccess) do
+			forwardAttack()
+			moveSuccess, originFB, originRL = moveForward(originFB, originRL, direction)
+		end
+	else
+		-- bedrock detected, depth limit reached if mining down
+		-- TODO: handling for when turtle encounters bedrock
+	end
+	return mined, originFB, originRL
 end
