@@ -20,19 +20,19 @@
 --																									--
 -- Output:	N/A																						--
 ------------------------------------------------------------------------------------------------------
-function enderCheck(chestSlotArray)
+function enderCheck(chestSlotArray, chests)
 	local isFinished = false
 	local iter = 1
 	while (not isFinished) do
 		print("Master, please provide me with the appropriate Ender Chests for the following slots:")
-		for iter = 1, 16 do
+		for iter = 1, chests do
 			if((chestSlotArray[iter][1] ~= 0) and (not chestSlotArray[iter][3])) then
 				print("Slot " .. chestSlotArray[iter][1] .. ": " .. chestSlotArray[iter][2])
 			end
 		end
 		print("Hit any key when done.")
 		os.pullEvent("key")
-		for iter = 1, 16 do
+		for iter = 1, chests do
 			if((chestSlotArray[iter][1] ~= 0) and (not chestSlotArray[iter][3])) then
 				if((turtle.getItemCount(chestSlotArray[iter][1])<1) and (isFinished)) then
 					isFinished = false
@@ -200,7 +200,7 @@ end
 -- refuel()																							--
 ------------------------------------------------------------------------------------------------------
 function refuel(refuelChest, blankSlot, upsideDown, dumpChest)
-	if(turtle.getFuelLevel() <= 1)
+	if(turtle.getFuelLevel() <= 100)
 		chestPlace(refuelChest, blankSlot, upsideDown)
 		if(turtle.suckUp() or turtle.suckDown()) then	-- note that there is no proper check hear, fix needed
 			turtle.refuel()
@@ -209,7 +209,7 @@ function refuel(refuelChest, blankSlot, upsideDown, dumpChest)
 			return true, true
 		else
 			print("Please check the fuel supply, master. I cannot refuel.")
-			print("Hit any key when fuel supply has been restored. Otherwise I'll just just check again in 30 seconds, okay Master?")
+			print("Hit any key when fuel supply has been restored. Otherwise I'll just check again in 30 seconds, okay Master?")
 			parallel.waitForAny(os.pullEvent("key"), wait(30))
 			chestRemove(refuelChest, dumpChest, blankSlot, upsideDown)
 		end
@@ -222,28 +222,28 @@ end
 -- resupply()																						--
 ------------------------------------------------------------------------------------------------------
 function resupply(resupplyChest, buildBlocks, blankSlot, upsideDown, dumpChest)
+	local success = false
 	chestPlace(resupplyChest, blankSlot, upsideDown)
 	turtle.select(buildBlocks)
 	if (turtle.suckUp() or turtle.suckDown()) then
-		return true
-	else
-		return false
+		success = true
 	end
 	chestRemove(resupplyChest, dumpChest, blankSlot, upsideDown)
+	return success
 end
 
 ------------------------------------------------------------------------------------------------------
 -- torchResupply()																					--
 ------------------------------------------------------------------------------------------------------
 function torchResupply(torchResupplyChest, torchSlot, blankSlot, upsideDown, dumpChest)
+	local success = false
 	chestPlace(torchResupplyChest, blankSlot, upsideDown)
 	turtle.select(torchSlot)
 	if (turtle.suckUp() or turtle.suckDown()) then
-		return true
-	else
-		return false
+		success = true
 	end
 	chestRemove(torchResupplyChest, dumpChest, blankSlot, upsideDown)
+	return success
 end
 
 ------------------------------------------------------------------------------------------------------
@@ -254,10 +254,9 @@ function itemDump(dumpChest, totalSlots, upsideDown, blankSlot)
 		chestPlace(dumpChest, blankSlot, upsideDown)
 		-- begin emptying slots
 		local slotNum = 1
-		for slotNum = 1, totalSlots
-		do
+		for slotNum = 1, totalSlots do
 			turtle.select(slotNum)
-			if upsideDown==true then
+			if (upsideDown==true) then
 				turtle.dropDown()
 			else
 				turtle.dropUp()
@@ -276,12 +275,12 @@ end
 ------------------------------------------------------------------------------------------------------
 function chestPlace(chest, blankSlot, upsideDown)
 	turtle.select(blankSlot)
-	if upsideDown==true then
+	if (upsideDown==true) then
 		turtle.digDown()
 		turtle.select(chest)
 		turtle.placeDown()
 	else
-		while turtle.detectUp() do
+		while (turtle.detectUp()) do
 			turtle.digUp()
 		end
 		turtle.select(chest)
@@ -294,7 +293,7 @@ end
 ------------------------------------------------------------------------------------------------------
 function chestRemove(chest, dumpChest, blankSlot, upsideDown)
 	turtle.select(chest)
-	if upsideDown==true then
+	if (upsideDown==true) then
 		turtle.digDown()
 		turtle.select(dumpChest)
 		turtle.placeDown()
@@ -399,8 +398,7 @@ function attackLoop()
 		turtle.attack()
 		turtle.suck()
 		if(turtle.getItemCount(1)>0)
-			for slotNum = 1, 16
-			do
+			for slotNum = 1, 16 do
 				turtle.select(slotNum)
 				turtle.dropDown()
 				if(turtle.getItemCount(slotNum + 1)==0) then break end
@@ -445,12 +443,12 @@ function xpBookAttackGrinder(side)
 		if (turtle.getItemCount(16)==0) then
 			turtle.select(16)
 			if (turtle.suckUp()) then
-				if (noBook==true) then
+				if (noBook) then
 					print("There are now books available to enchant, master. I will now continue to enchant books.")
 					noBook = false
 				end
 			else
-				if (noBook==false) then
+				if (not noBook) then
 					print("There are no more books available to enchant, master. I will continue grinding for now.")
 					noBook = true
 				end
@@ -459,14 +457,14 @@ function xpBookAttackGrinder(side)
 		
 		forwardAttack()
 		
-		if (noBook==false) then
+		if (not noBook) then
 			if (turtle.getLevels()>=30) then
-				if (noDump==false) then
+				if (not noDump) then
 					turtle.select(16)
 					turtle.transferTo(15, 1)
 					turtle.select(15)
 					turtle.enchant(30)
-					if (turtle.dropDown()==false) then
+					if (not turtle.dropDown()) then
 						print("Output chest for enchanted books is full, master. I will continue grinding for now.")
 						noDump = true
 						turtle.select(16)
@@ -486,8 +484,7 @@ function xpBookAttackGrinder(side)
 		
 		if(turtle.getItemCount(1)>0)
 			turtle.turnLeft()
-			for slotNum = 1, 14
-			do
+			for slotNum = 1, 14 do
 				turtle.select(slotNum)
 				turtle.drop()
 				if(turtle.getItemCount(slotNum + 1)==0) then break end
@@ -512,26 +509,26 @@ function xpBookGrinder(side)
 		if (turtle.getItemCount(16)==0) then
 			turtle.select(16)
 			if (turtle.suckUp()) then
-				if (noBook==true) then
+				if (noBook) then
 					print("There are now books available to enchant, master. I will now continue to enchant books.")
 					noBook = false
 				end
 			else
-				if (noBook==false) then
+				if (not noBook) then
 					print("There are no more books available to enchant, master. I will continue grinding for now.")
 					noBook = true
 				end
 			end
 		end
 		
-		if (noBook==false) then
+		if (not noBook) then
 			if (turtle.getLevels()>=30) then
-				if (noDump==false) then
+				if (not noDump) then
 					turtle.select(16)
 					turtle.transferTo(15, 1)
 					turtle.select(15)
 					turtle.enchant(30)
-					if (turtle.dropDown()==false) then
+					if (not turtle.dropDown()) then
 						print("Output chest for enchanted books is full, master. I will continue grinding for now.")
 						noDump = true
 						turtle.select(16)
@@ -562,38 +559,38 @@ function areaClear()
 	local originRL = 0
 	local originUD = 0
 	local direction = 0
+	local previousDirection = 0
 	local upsideDown = false
 	local mined = true
-	local moveSucess = true
+	local moveSuccess = true
 	local doMineUp, doMineForward, doMineDown = true, true, true
+	local operation = 0
+	local upDirection = true
 	
 	print("Initialising Area Clear Code...")
 	
-	local enderChestArray = []
+	local enderChestArray = {}
 	local iter = 1
-	for iter = 1, 4
-	do
-		enderChestArray[iter] = []
+	for iter = 1, 4 do
+		enderChestArray[iter] = {}
 	end
 	
 	-- Array of required ender chests
-	enderChestArray[1][1] = 13
+	enderChestArray[1][1] = 14
 	enderChestArray[1][2] = "Dump Chest"
 	enderChestArray[1][3] = false
-	enderChestArray[2][1] = 14
+	enderChestArray[2][1] = 15
 	enderChestArray[2][2] = "Refuel Chest"
 	enderChestArray[2][3] = false
-	enderChestArray[3][1] = 15
+	enderChestArray[3][1] = 16
 	enderChestArray[3][2] = "Torch Resupply Chest"
 	enderChestArray[3][3] = false
-	enderChestArray[4][1] = 16
-	enderChestArray[4][2] = "Resupply Chest"
-	enderChestArray[4][3] = false
-	enderCheck(chestSlotArray)
+	enderCheck(enderChestArray, 3)
 	
 	-- Working inventory for turtle
 	local totalSlots = 11
 	local blankSlot = 12
+	local torchSlot = 13
 	
 	print("Master, how wide do you want me to make the area?")
 	local width = tonumber(read())
@@ -610,47 +607,180 @@ function areaClear()
 	end
 	print("I will begin clearing out the area then, master. I will return here once finished.")
 	
+	-- will assume for now that you are not using this near bedrock in the wrong direction
 	if((not upsideDown) and (height > 1)) then
 		while (turtle.detectUp()) do
 			mined = mineUp(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+			sleep(2)
 		end
 		moveSuccess, originUD = moveUp(originUD)
 		while(not moveSuccess) do
 			upAttack()
 			moveSuccess, originUD = moveUp(originUD)
 		end
+		upDirection = true
+	elseif((upsideDown) and (height < -1)) then
+		while (turtle.detectDown()) do
+			mined = mineDown(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+			sleep(2)
+		end
+		moveSuccess, originUD = moveDown(originUD)
+		while(not moveSuccess) do
+			downAttack()
+			moveSuccess, originUD = moveDown(originUD)
+		end
+		upDirection = false
 	end
 	
 	local needRefuel = false
 	local hasRefueled = false
 	
 	while ((originFB < length) and (mined)) do
+		-- refuel check
 		needRefuel, hasRefueled = refuel(enderChestArray[2][1], blankSlot, upsideDown, enderChestArray[1][1])
-		while ((needRefuel == true) and (hasRefueled == false)) do
+		while ((needRefuel) and (not hasRefueled)) do
 			sleep(60)
 			needRefuel, hasRefueled = refuel(enderChestArray[2][1], blankSlot, upsideDown, enderChestArray[1][1])
 		end
-		if(originFB % 2 == 0) then
-			while(direction ~= 1) do
-				direction = turnRight(direction)
+		
+		-- torch resupply check
+		if(turtle.getItemCount(torchSlot) == 0) then
+			while(not torchResupply(enderChestArray[3][1], torchSlot, blankSlot, upsideDown, dumpChest)) do
+				sleep(60)
 			end
-			if(originRL == (width - 1)) then
-				while(direction ~= 0) do -- should go up/down, not forward
+		end
+		
+		if((originRL == (width - 1)) or (originRL == 0)) then -- currently at edge
+			previousDirection = direction
+			if((upsideDown and (((originUD == height + 2) and not upDirection) or ((originUD == -1) and upDirection))) or (not upsideDown and (((originUD == height - 2) and upDirection) or ((originUD == 1) and not upDirection)))) then
+				upDirection = (not upDirection)
+				operation = 1 -- go forward
+			else
+				operation = 0 -- go up/down
+			end
+			while(direction ~= 0) do
+				direction = turnLeft(direction)
+			end
+		else
+			operation = 1 -- go forward
+		end
+		
+		if(previousDirection == 0) then -- previously going forward/up/down/at start
+			if(originRL == 0) then
+				while(direction ~= 1) do
+					direction = turnRight(direction)
+				end
+			elseif(originRL == (width - 1)) then
+				while(direction ~= 3) do
 					direction = turnLeft(direction)
 				end
 			end
-		else
-			while(direction ~= 3) do
-				direction = turnLeft(direction)
+		end
+		
+		-- dig operation check
+		if(upsideDown) then
+			if(originUD == 0) then	-- should never happen
+				doMineUp = false
+				doMineDown = true
+			elseif(originUD == (height + 1)) then -- should never happen
+				doMineUp = true
+				doMineDown = false
+			else
+				doMineUp = true
+				doMineDown = true
 			end
-			if(originRL == 0) then
-				while(direction ~= 0) do -- should go up/down, not forward
-					direction = turnRight(direction)
-				end
+		else
+			if(originUD == (height - 1)) then -- should never happen
+				doMineUp = false
+				doMineDown = true
+			elseif(originUD == 0) then -- should never happen
+				doMineUp = true
+				doMineDown = false
+			else
+				doMineUp = true
+				doMineDown = true
 			end
 		end
-		mined, originFB, originRL = mineOutForward(enderChestArray[1][1], totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
+		if(((originLR == 0) and (direction == 3)) or ((originLR == (width - 1)) and (direction == 1)) or ((originFB == (length - 1)) and (direction == 0))) then
+			-- should only happen at final position before returning to origin or when moving up/down
+			doMineForward = false
+		else
+			doMineForward = true
+		end
+		
+		if(operation == 1) then
+			if(((originRL + 1) % 3 == 0) and ((originFB + 1) % 3 == 0) and (upsideDown and (originUD == (height + 2))) or (not upsideDown and (originUD == 1))) then
+				-- torch embed down
+				if(mineDown(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)) then
+					moveSuccess, originUD = moveDown(originUD)
+					if(moveSuccess) then
+						floorEmbedTorch(torchSlot, enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+						moveSuccess, originUD = moveUp(originUD)
+						-- can place something here if move failed
+					end
+				end
+			elseif((((originRL == 0 or originRL == (width - 1)) and ((originFB + 1) % 3 == 0)) or ((originFB == 0 or originFB == (length - 1)) and ((originRL + 1) % 3 == 0))) and ((not upsideDown and ((originUD + 1) % 3 == 0)) or (upsideDown and (-(originUD - 1) % 3 == 0)))) then
+				-- wall embed torch
+				previousDirection = direction
+				if(originRL == 0) then
+					while(direction ~= 3) do
+						direction = turnRight(direction)
+					end
+				elseif(originRL == (width - 1)) then
+					while(direction ~= 1) do
+						direction = turnRight(direction)
+					end
+				elseif(originFB == 0) then
+					while(direction ~= 2) do
+						direction = turnRight(direction)
+					end
+				elseif(originFB == (length - 1)) then
+					while(direction ~= 0) do
+						direction = turnRight(direction)
+					end
+				end
+				wallEmbedTorch(torchSlot, enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+				while(direction ~= previousDirection) do
+					direction = turnLeft(direction)
+				end
+			end
+			mined, originFB, originRL = mineOutForward(enderChestArray[1][1], totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
+		elseif(operation == 0) then
+			if(upDirection == true) then
+				moveSuccess, originUD = moveUpAdvanced(originUD, dumpChest, totalSlots, upsideDown, blankSlot)
+			else
+				moveSuccess, originUD = moveDownAdvanced(originUD, dumpChest, totalSlots, upsideDown, blankSlot)
+			end
+		end
 	end
+	
+	print("I have now finished clearing out the area, master.")
+	
+	--TODO: Add ability for turtle to return to starting position
+end
+
+function moveUpAdvanced(originUD, dumpChest, totalSlots, upsideDown, blankSlot)
+	local mined = false
+	local moveSuccess = false
+	if(turtle.detectUp()) then
+		mined = mineUp(dumpChest, totalSlots, upsideDown, blankSlot)
+		-- TODO: handle if bedrock detected at this point
+	end
+	upAttack()
+	moveSuccess, originUD = moveUp(originUD)
+	return moveSuccess, originUD
+end
+
+function moveDownAdvanced(originUD, dumpChest, totalSlots, upsideDown, blankSlot)
+	local mined = false
+	local moveSuccess = false
+	if(turtle.detectDown()) then
+		mined = mineDown(dumpChest, totalSlots, upsideDown, blankSlot)
+		-- TODO: handle if bedrock detected at this point
+	end
+	downAttack()
+	moveSuccess, originUD = moveDown(originUD)
+	return moveSuccess, originUD
 end
 
 function mineOutForward(dumpChest, totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
@@ -680,7 +810,7 @@ function mineOutForward(dumpChest, totalSlots, upsideDown, blankSlot, originFB, 
 		end
 		sleep(2)
 	end
-	if(mined) then
+	if(mined and doMineForward) then
 		moveSuccess, originFB, originRL = moveForward(originFB, originRL, direction)
 		while(not moveSuccess) do
 			forwardAttack()
