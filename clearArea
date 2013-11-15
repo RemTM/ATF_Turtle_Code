@@ -1,0 +1,200 @@
+local totalSlots = 13
+local blankSlot = 14
+local dumpChest = 15
+local refuelChest = 16
+local originUD = 1
+local originFB = 0
+local originRL = 1
+local direction = 1
+local oddHeight = false
+local fuelCheckLimit = 1000
+local slotNum = 1
+
+print("Please enter how high the cleared area will need to be:")
+local height = tonumber(read())
+print("Please enter how wide the cleared area will need to be:")
+local width = tonumber(read())
+print("Please enter how long the cleared area will need to be:")
+local length = tonumber(read())
+
+if(height % 2 == 1) then
+	oddHeight = true
+end
+
+while(not turtle.detect()) do
+	while(not turtle.forward()) do
+		turtle.attack()
+	end
+	originFB = originFB + 1
+end
+
+while(turtle.detect()) do
+	turtle.dig()
+end
+while(not turtle.forward()) do
+	turtle.attack()
+end
+turtle.turnRight()
+
+nextLayer = false
+while(true) do
+	if(turtle.getFuelLevel() < fuelCheckLimit) then
+		if(originUD > 1) then
+			turtle.select(refuelChest)
+			turtle.placeDown()
+		else
+			turtle.select(1)
+			while(turtle.detectUp()) do
+				turtle.digUp()
+			end
+			turtle.select(refuelChest)
+			turtle.placeUp()
+		end
+		while(turtle.getFuelLevel() < fuelCheckLimit) do
+			turtle.select(blankSlot)
+   turtle.suckUp()
+   turtle.suckDown()
+			turtle.refuel()
+		end
+		turtle.select(refuelChest)
+		if(originUD > 1) then
+			turtle.digDown()
+		else
+			turtle.digUp()
+		end
+	end
+	
+	if(turtle.getItemCount(totalSlots) > 0) then
+		if(originUD > 1) then
+			turtle.select(dumpChest)
+			turtle.placeDown()
+		else
+			turtle.select(1)
+			while(turtle.detectUp()) do
+				turtle.digUp()
+			end
+			turtle.select(dumpChest)
+			turtle.placeUp()
+		end
+		for slotNum = 1, totalSlots do
+			turtle.select(slotNum)
+			if(originUD > 1) then
+				turtle.dropDown()
+			else
+				turtle.dropUp()
+			end
+		end
+		turtle.select(dumpChest)
+		if(originUD > 1) then
+			turtle.digDown()
+		else
+			turtle.digUp()
+		end
+	end
+	
+	if(originUD == height) then
+		if(oddHeight) then
+			if(originRL == width) then
+				nextLayer = true
+			end
+		else
+			if(originRL == 1) then
+				nextLayer = true
+			end
+		end
+	end
+	
+	if(nextLayer) then
+		while(direction ~= 3) do
+			turtle.turnLeft()
+			direction = direction - 1
+			if(direction < 0) then
+				direction = 3
+			end
+		end
+		
+		while(originRL ~= 1) do
+			while(turtle.detect()) do
+				turtle.dig()
+			end
+			while(not turtle.forward()) do
+				turtle.attack()
+			end
+			originRL = originRL - 1
+		end
+		while(originUD ~= 1) do
+			while(turtle.detectDown()) do
+				turtle.digDown()
+			end
+			while(not turtle.down()) do
+				turtle.attackDown()
+			end
+			originUD = originUD - 1
+		end
+		
+		if(originFB == length) then
+			while(direction ~= 2) do
+				turtle.turnLeft()
+				direction = direction - 1
+				if(direction < 0) then
+					direction = 3
+				end
+			end
+			while(originFB ~= 0) do
+				while(turtle.detect()) do
+					turtle.dig()
+				end
+				while(not turtle.forward()) do
+					turtle.attack()
+				end
+				originFB = originFB - 1
+			end
+			turtle.turnLeft()
+			turtle.turnLeft()
+			break
+		else
+			turtle.turnRight()
+			while(turtle.detect()) do
+				turtle.dig()
+			end
+			while(not turtle.forward()) do
+				turtle.attack()
+			end
+			turtle.turnRight()
+			direction = 1
+			nextLayer = false
+			originFB = originFB + 1
+		end
+	else
+		if((originRL == 1 and direction == 3) or (originRL == width and direction == 1)) then
+			while(turtle.detectUp()) do
+				turtle.digUp()
+			end
+			while(not turtle.up()) do
+				turtle.attackUp()
+			end
+			originUD = originUD + 1
+			turtle.turnLeft()
+			turtle.turnLeft()
+			if(direction == 1) then
+				direction = 3
+			elseif(direction == 3) then
+				direction = 1
+			end
+		else
+			while(turtle.detect()) do
+				turtle.dig()
+			end
+			while(not turtle.forward()) do
+				turtle.attack()
+			end
+			if(direction == 1) then
+				originRL = originRL + 1
+			elseif(direction == 3) then
+				originRL = originRL - 1
+			end
+		end
+	end
+end
+
+print("Finished clearing area")

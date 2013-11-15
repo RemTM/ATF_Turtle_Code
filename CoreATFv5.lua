@@ -83,7 +83,7 @@ end
 ------------------------------------------------------------------------------------------------------
 function turnRight(direction)
 	direction = direction + 1
-	if(direction>0) then
+	if(direction>3) then
 		direction = 0
 	end
 	turtle.turnRight()
@@ -373,10 +373,10 @@ function buildFloorSimple()
 					turtle.turnLeft()
 					if upsideDown then
 						turtle.down()
-						turtle.placeDown()
+						turtle.placeUp()
 					else
 						turtle.up()
-						turtle.placeUp()
+						turtle.placeDown()
 					end
 					return true
 				end
@@ -591,6 +591,9 @@ function areaClear()
 	local totalSlots = 11
 	local blankSlot = 12
 	local torchSlot = 13
+	local dumpChest = 14
+	local refuelChest = 15
+	local torchResupplyChest = 16
 	
 	print("Master, how wide do you want me to make the area?")
 	local width = tonumber(read())
@@ -610,7 +613,7 @@ function areaClear()
 	-- will assume for now that you are not using this near bedrock in the wrong direction
 	if((not upsideDown) and (height > 1)) then
 		while (turtle.detectUp()) do
-			mined = mineUp(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+			mined = mineUp(dumpChest, totalSlots, upsideDown, blankSlot)
 			sleep(2)
 		end
 		moveSuccess, originUD = moveUp(originUD)
@@ -621,7 +624,7 @@ function areaClear()
 		upDirection = true
 	elseif((upsideDown) and (height < -1)) then
 		while (turtle.detectDown()) do
-			mined = mineDown(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+			mined = mineDown(dumpChest, totalSlots, upsideDown, blankSlot)
 			sleep(2)
 		end
 		moveSuccess, originUD = moveDown(originUD)
@@ -637,18 +640,21 @@ function areaClear()
 	
 	while ((originFB < length) and (mined)) do
 		-- refuel check
-		needRefuel, hasRefueled = refuel(enderChestArray[2][1], blankSlot, upsideDown, enderChestArray[1][1])
+		needRefuel, hasRefueled = refuel(refuelChest, blankSlot, upsideDown, dumpChest)
 		while ((needRefuel) and (not hasRefueled)) do
 			sleep(60)
-			needRefuel, hasRefueled = refuel(enderChestArray[2][1], blankSlot, upsideDown, enderChestArray[1][1])
+			needRefuel, hasRefueled = refuel(refuelChest, blankSlot, upsideDown, dumpChest)
 		end
 		
 		-- torch resupply check
 		if(turtle.getItemCount(torchSlot) == 0) then
-			while(not torchResupply(enderChestArray[3][1], torchSlot, blankSlot, upsideDown, dumpChest)) do
+			while(not torchResupply(torchResupplyChest, torchSlot, blankSlot, upsideDown, dumpChest)) do
 				sleep(60)
 			end
 		end
+		
+		-- CHECK: Confirmed working up to this point. Fails afterwards
+		-- Possible that variable is missing from method calls or similar
 		
 		if((originRL == (width - 1)) or (originRL == 0)) then -- currently at edge
 			previousDirection = direction
@@ -656,7 +662,11 @@ function areaClear()
 				upDirection = (not upDirection)
 				operation = 1 -- go forward
 			else
-				operation = 0 -- go up/down
+				if(not upsideDown and ((originUD + 1) % 3 ~= 0) or (upsideDown and ((originUD - 1) % 3 ~= 0))) then
+					operation = 0 -- go up/down
+				else
+					operation = 1 -- go forward
+				end
 			end
 			while(direction ~= 0) do
 				direction = turnLeft(direction)
@@ -701,7 +711,7 @@ function areaClear()
 				doMineDown = true
 			end
 		end
-		if(((originLR == 0) and (direction == 3)) or ((originLR == (width - 1)) and (direction == 1)) or ((originFB == (length - 1)) and (direction == 0))) then
+		if(((originRL == 0) and (direction == 3)) or ((originRL == (width - 1)) and (direction == 1)) or ((originFB == (length - 1)) and (direction == 0))) then
 			-- should only happen at final position before returning to origin or when moving up/down
 			doMineForward = false
 		else
@@ -711,10 +721,10 @@ function areaClear()
 		if(operation == 1) then
 			if(((originRL + 1) % 3 == 0) and ((originFB + 1) % 3 == 0) and (upsideDown and (originUD == (height + 2))) or (not upsideDown and (originUD == 1))) then
 				-- torch embed down
-				if(mineDown(enderChestArray[1][1], totalSlots, upsideDown, blankSlot)) then
+				if(mineDown(dumpChest, totalSlots, upsideDown, blankSlot)) then
 					moveSuccess, originUD = moveDown(originUD)
 					if(moveSuccess) then
-						floorEmbedTorch(torchSlot, enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+						floorEmbedTorch(torchSlot, dumpChest, totalSlots, upsideDown, blankSlot)
 						moveSuccess, originUD = moveUp(originUD)
 						-- can place something here if move failed
 					end
@@ -739,13 +749,13 @@ function areaClear()
 						direction = turnRight(direction)
 					end
 				end
-				wallEmbedTorch(torchSlot, enderChestArray[1][1], totalSlots, upsideDown, blankSlot)
+				wallEmbedTorch(torchSlot, dumpChest, totalSlots, upsideDown, blankSlot)
 				while(direction ~= previousDirection) do
 					direction = turnLeft(direction)
 				end
 			end
-			mined, originFB, originRL = mineOutForward(enderChestArray[1][1], totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
-		elseif(operation == 0) then
+			mined, originFB, originRL = mineOutForward(dumpChest, totalSlots, upsideDown, blankSlot, originFB, originRL, direction, doMineUp, doMineForward, doMineDown)
+		elseif(operation == 0) then --TODO: Proper management required
 			if(upDirection == true) then
 				moveSuccess, originUD = moveUpAdvanced(originUD, dumpChest, totalSlots, upsideDown, blankSlot)
 			else
@@ -755,8 +765,44 @@ function areaClear()
 	end
 	
 	print("I have now finished clearing out the area, master.")
-	
-	--TODO: Add ability for turtle to return to starting position
+	while((originFB ~= 0) and (originRL ~= 0) and (originUD ~= 0)) do
+		if(originFB ~= 0) then
+			while(direction ~= 2) do
+				direction = turnLeft(direction)
+			end
+			mineOutForward(dumpChest, totalSlots, upsideDown, blankSlot, originFB, originRL, direction, true, true, true)
+		elseif(originRL ~= 0) then
+			while(direction ~= 3) do
+				direction = turnLeft(direction)
+			end
+			mineOutForward(dumpChest, totalSlots, upsideDown, blankSlot, originFB, originRL, direction, true, true, true)
+		elseif(originUD ~= 0) then
+			while(direction ~= 0) do
+				direction = turnLeft(direction)
+			end
+			if(upsideDown) then
+				while(turtle.detectUp()) do
+					mined = mineUp(dumpChest, totalSlots, upsideDown, blankSlot)
+					sleep(2)
+				end
+				moveSuccess, originUD = moveUp(originUD)
+				while(not moveSuccess) do
+					upAttack()
+					moveSuccess, originUD = moveUp(originUD)
+				end
+			else
+				while (turtle.detectDown()) do
+					mined = mineDown(dumpChest, totalSlots, upsideDown, blankSlot)
+					sleep(2)
+				end
+				moveSuccess, originUD = moveDown(originUD)
+				while(not moveSuccess) do
+					downAttack()
+					moveSuccess, originUD = moveDown(originUD)
+				end
+			end
+		end
+	end
 end
 
 function moveUpAdvanced(originUD, dumpChest, totalSlots, upsideDown, blankSlot)
